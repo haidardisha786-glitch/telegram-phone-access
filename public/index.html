@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Phone Permission</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:700px;margin:auto;padding:24px}
+button{padding:12px 16px;margin:6px 4px 6px 0;border:0;border-radius:10px}
+pre{background:#f3f3f3;padding:12px;border-radius:10px;white-space:pre-wrap}
+video{width:100%;max-height:420px;background:#111;border-radius:12px}
+.note{background:#fff3cd;padding:12px;border-radius:10px}
+</style>
+</head>
+
+<body>
+<h2>অনুমোদিত ফোন অ্যাক্সেস</h2>
+
+<p class="note">
+ফোন হাতে থাকা ব্যক্তি নিজে Allow চাপলেই Location/Camera ব্যবহার হবে।
+কোনো গোপন access নেই।
+</p>
+
+<button id="location">📍 Location Allow</button>
+<button id="camera">📷 Camera Allow</button>
+<button id="stop">⏹ Camera বন্ধ</button>
+
+<pre id="out">প্রস্তুত।</pre>
+<video id="video" autoplay playsinline muted></video>
+
+<script>
+const out=document.getElementById("out");
+const video=document.getElementById("video");
+let stream=null;
+
+document.getElementById("location").onclick=()=>{
+ if(!navigator.geolocation){
+   out.textContent="এই browser geolocation সমর্থন করে না।";
+   return;
+ }
+
+ out.textContent="Location permission চাওয়া হচ্ছে...";
+
+ navigator.geolocation.getCurrentPosition(async p=>{
+   const data={
+     latitude:p.coords.latitude,
+     longitude:p.coords.longitude,
+     accuracy:p.coords.accuracy
+   };
+
+   out.textContent=JSON.stringify(data,null,2);
+
+   try{
+     const r=await fetch("/location",{
+       method:"POST",
+       headers:{"Content-Type":"application/json"},
+       body:JSON.stringify(data)
+     });
+
+     out.textContent+="\n\nServer: "+await r.text();
+   }catch(e){
+     out.textContent+="\n\nServer-এ পাঠানো যায়নি: "+e.message;
+   }
+
+ },e=>{
+   out.textContent="Location পাওয়া যায়নি: "+e.message;
+ },{
+   enableHighAccuracy:true,
+   timeout:15000,
+   maximumAge:0
+ });
+};
+
+document.getElementById("camera").onclick=async()=>{
+ try{
+   stream=await navigator.mediaDevices.getUserMedia({
+     video:true,
+     audio:false
+   });
+
+   video.srcObject=stream;
+   out.textContent="Camera permission দেওয়া হয়েছে।";
+ }catch(e){
+   out.textContent="Camera access পাওয়া যায়নি: "+e.message;
+ }
+};
+
+document.getElementById("stop").onclick=()=>{
+ if(stream) stream.getTracks().forEach(t=>t.stop());
+
+ stream=null;
+ video.srcObject=null;
+ out.textContent="Camera বন্ধ।";
+};
+</script>
+
+</body>
+</html>
